@@ -44,12 +44,15 @@ struct BodyAnalysis {
 
 // MARK: - Color Extensions
 extension Color {
-    static let gymMaxPrimary = Color(hex: "6C63FF")    // Modern purple
-    static let gymMaxSecondary = Color(hex: "FF6B6B")  // Energetic coral
-    static let gymMaxAccent = Color(hex: "4ECDC4")     // Fresh mint
-    static let gymMaxGradientStart = Color(hex: "6C63FF")
-    static let gymMaxGradientEnd = Color(hex: "FF6B6B")
-    static let gymMaxBackground = Color(hex: "F8F9FA")
+    static let gymMaxPrimary = Color(hex: "7B2CBF")    // Deep purple
+    static let gymMaxSecondary = Color(hex: "FF4D6D")  // Vibrant pink
+    static let gymMaxAccent = Color(hex: "14FFEC")     // Neon cyan
+    static let gymMaxGradientStart = Color(hex: "240046") // Dark purple
+    static let gymMaxGradientEnd = Color(hex: "5A189A")   // Medium purple
+    static let gymMaxBackground = Color(hex: "10002B")    // Deep dark purple
+    static let gymMaxCardBackground = Color(hex: "3C096C").opacity(0.7) // Semi-transparent purple
+    static let gymMaxText = Color.white
+    static let gymMaxSubtext = Color.white.opacity(0.7)
     
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
@@ -86,7 +89,7 @@ struct ContentView: View {
             HomeView()
                 .tabItem {
                     Image(systemName: "house.fill")
-                    Text("Home")
+                    Text("Dashboard")
                 }
                 .tag(0)
             
@@ -99,88 +102,172 @@ struct ContentView: View {
             
             ProgressViewSection()
                 .tabItem {
-                    Image(systemName: "chart.line.uptrend.xyaxis")
+                    Image(systemName: "chart.bar.fill")
                     Text("Progress")
                 }
                 .tag(2)
             
-            WorkoutPlanView()
-                .tabItem {
-                    Image(systemName: "figure.run")
-                    Text("Workouts")
-                }
-                .tag(3)
-            
             ProfileView()
                 .tabItem {
-                    Image(systemName: "person.crop.circle.fill")
-                    Text("You")
+                    Image(systemName: "person.fill")
+                    Text("Profile")
                 }
-                .tag(4)
+                .tag(3)
         }
-        .accentColor(Color.gymMaxPrimary)
+        .accentColor(.gymMaxAccent)
+        .preferredColorScheme(.dark)
+        .background(
+            LinearGradient(
+                gradient: Gradient(colors: [.gymMaxGradientStart, .gymMaxGradientEnd]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        )
     }
 }
 
 // MARK: - HomeView
 struct HomeView: View {
+    @State private var selectedWorkout: WorkoutDay?
+    @State private var showingWorkoutDetail = false
+    @State private var dailyMotivation: String = "Loading your personalized motivation..."
+    @State private var workoutStreak: Int = 0
+    @State private var nextWorkout: WorkoutDay?
+    
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: 25) {
-                    // Hero Section
-                    ZStack {
-                        LinearGradient(gradient: Gradient(colors: [Color.gymMaxGradientStart, Color.gymMaxGradientEnd]),
-                                     startPoint: .topLeading,
-                                     endPoint: .bottomTrailing)
-                            .frame(height: 300)
-                            .clipShape(RoundedRectangle(cornerRadius: 30))
-                            .padding(.horizontal)
+        ScrollView {
+            VStack(spacing: 25) {
+                // Hero Section with Streak
+                ZStack {
+                    RoundedRectangle(cornerRadius: 25)
+                        .fill(LinearGradient(
+                            gradient: Gradient(colors: [.gymMaxGradientStart, .gymMaxGradientEnd]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ))
+                        .frame(height: 200)
                     
-                        VStack(spacing: 15) {
-                            Text("💪 Welcome Back!")
-                                .font(.system(size: 32, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
-                            
-                            Text("Ready to crush your goals?")
-                                .font(.title3)
-                                .foregroundColor(.white.opacity(0.9))
-                        }
-                    }
-                    
-                    // Quick Stats
-                    HStack(spacing: 15) {
-                        StatCard(title: "Streak", value: "5 days", icon: "flame.fill")
-                        StatCard(title: "Progress", value: "+2.5 lbs", icon: "chart.line.uptrend.xyaxis")
-                    }
-                    .padding(.horizontal)
-                    
-                    // Today's Workout
-                    VStack(alignment: .leading, spacing: 15) {
-                        Text("Today's Workout")
-                            .font(.title2)
+                    VStack(spacing: 15) {
+                        Text("🔥 \(workoutStreak) Day Streak!")
+                            .font(.title)
                             .fontWeight(.bold)
-                            .padding(.horizontal)
+                            .foregroundColor(.white)
                         
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 20) {
-                                WorkoutCard(title: "Upper Body", duration: "45 min", intensity: "Medium")
-                                WorkoutCard(title: "Core Focus", duration: "30 min", intensity: "High")
-                                WorkoutCard(title: "Cardio Blast", duration: "20 min", intensity: "High")
-                            }
+                        Text(dailyMotivation)
+                            .font(.headline)
+                            .foregroundColor(.gymMaxSubtext)
+                            .multilineTextAlignment(.center)
                             .padding(.horizontal)
+                    }
+                }
+                .padding(.horizontal)
+                
+                // AI Workout Recommendation
+                VStack(alignment: .leading, spacing: 15) {
+                    Text("Today's AI Recommendation")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.gymMaxText)
+                        .padding(.horizontal)
+                    
+                    if let workout = nextWorkout {
+                        Button(action: {
+                            selectedWorkout = workout
+                            showingWorkoutDetail = true
+                        }) {
+                            WorkoutDayCard(day: workout) {}
+                                .padding(.horizontal)
                         }
                     }
-                    
-                    // Motivation Quote
-                    QuoteCard(quote: "The only bad workout is the one that didn't happen.", author: "Unknown")
-                        .padding(.horizontal)
                 }
-                .padding(.vertical)
+                
+                // Quick Actions
+                LazyVGrid(columns: [
+                    GridItem(.flexible()),
+                    GridItem(.flexible())
+                ], spacing: 20) {
+                    QuickActionCard(
+                        icon: "camera.fill",
+                        title: "Progress Photo",
+                        subtitle: "Track your journey"
+                    )
+                    
+                    QuickActionCard(
+                        icon: "chart.bar.fill",
+                        title: "Body Stats",
+                        subtitle: "Update measurements"
+                    )
+                    
+                    QuickActionCard(
+                        icon: "brain.head.profile",
+                        title: "AI Analysis",
+                        subtitle: "Get insights"
+                    )
+                    
+                    QuickActionCard(
+                        icon: "figure.walk",
+                        title: "Step Count",
+                        subtitle: "Daily activity"
+                    )
+                }
+                .padding(.horizontal)
             }
-            .background(Color.gymMaxBackground)
-            .navigationBarHidden(true)
+            .padding(.vertical)
         }
+        .background(Color.gymMaxBackground)
+        .sheet(isPresented: $showingWorkoutDetail) {
+            if let workout = selectedWorkout {
+                WorkoutDetailView(workout: workout)
+            }
+        }
+        .onAppear {
+            generateDailyContent()
+        }
+    }
+    
+    private func generateDailyContent() {
+        // Simulate AI generating personalized content
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            dailyMotivation = "Your dedication is inspiring! Today's focus: Build strength and confidence 💪"
+            workoutStreak = 7
+            nextWorkout = WorkoutDay(
+                name: "Power Push",
+                focus: "Upper Body + Core",
+                exercises: [
+                    Exercise(name: "Push-ups", sets: 3, reps: "12-15", notes: "Focus on form"),
+                    Exercise(name: "Plank Hold", sets: 3, reps: "45 sec", notes: "Engage core"),
+                    Exercise(name: "Dumbbell Press", sets: 3, reps: "10-12", notes: "Moderate weight")
+                ]
+            )
+        }
+    }
+}
+
+struct QuickActionCard: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 24))
+                .foregroundColor(.gymMaxAccent)
+            
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.gymMaxText)
+            
+            Text(subtitle)
+                .font(.subheadline)
+                .foregroundColor(.gymMaxSubtext)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color.gymMaxCardBackground)
+        .cornerRadius(15)
+        .shadow(color: Color.black.opacity(0.1), radius: 10)
     }
 }
 
@@ -206,9 +293,9 @@ struct StatCard: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(Color.white)
+        .background(Color.gymMaxCardBackground)
         .cornerRadius(15)
-        .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
+        .shadow(color: Color.black.opacity(0.05), radius: 10)
     }
 }
 
@@ -239,7 +326,7 @@ struct WorkoutCard: View {
         }
         .padding()
         .frame(width: 160)
-        .background(Color.white)
+        .background(Color.gymMaxCardBackground)
         .cornerRadius(15)
         .shadow(color: Color.black.opacity(0.05), radius: 10)
     }
@@ -263,7 +350,7 @@ struct QuoteCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity)
-        .background(Color.white)
+        .background(Color.gymMaxCardBackground)
         .cornerRadius(15)
         .shadow(color: Color.black.opacity(0.05), radius: 10)
     }
@@ -333,7 +420,7 @@ struct TransformView: View {
                                 BodyAnalysisView(analysis: analysis)
                             }
                             .padding()
-                            .background(Color.white.opacity(0.1))
+                            .background(Color.gymMaxCardBackground)
                             .cornerRadius(20)
                             .shadow(radius: 5)
                             .transition(.opacity)
@@ -398,7 +485,7 @@ struct ProgressViewSection: View {
                             .padding(.horizontal)
                         
                         VStack(spacing: 15) {
-                            Image(systemName: "chart.line.uptrend.xyaxis.circle.fill")
+                            Image(systemName: "chart.bar.fill")
                                 .font(.system(size: 40))
                                 .foregroundColor(.white)
                             
@@ -507,7 +594,7 @@ struct AddPhotoCard: View {
         }
         .frame(height: 200)
         .frame(maxWidth: .infinity)
-        .background(Color.white)
+        .background(Color.gymMaxCardBackground)
         .cornerRadius(15)
         .shadow(color: Color.black.opacity(0.05), radius: 10)
     }
@@ -532,7 +619,7 @@ struct ProgressPhotoCard: View {
                     .padding(.bottom, 8)
             }
             .frame(maxWidth: .infinity)
-            .background(Color.white)
+            .background(Color.gymMaxCardBackground)
             .cornerRadius(15)
             .shadow(color: Color.black.opacity(0.05), radius: 10)
         }
@@ -557,7 +644,7 @@ struct PhotoDetailView: View {
                         DetailRow(title: "Time", value: photo.formattedTime)
                     }
                     .padding()
-                    .background(Color.white)
+                    .background(Color.gymMaxCardBackground)
                     .cornerRadius(15)
                 }
                 .padding()
@@ -649,7 +736,7 @@ struct WorkoutPlanView: View {
                                 }
                                 .padding()
                                 .frame(maxWidth: .infinity)
-                                .background(Color.white)
+                                .background(Color.gymMaxCardBackground)
                                 .cornerRadius(15)
                                 .shadow(color: Color.black.opacity(0.05), radius: 10)
                             }
@@ -755,7 +842,7 @@ struct WorkoutDayCard: View {
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white)
+            .background(Color.gymMaxCardBackground)
             .cornerRadius(15)
             .shadow(color: Color.black.opacity(0.05), radius: 10)
         }
@@ -825,7 +912,7 @@ struct ExerciseCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white)
+        .background(Color.gymMaxCardBackground)
         .cornerRadius(15)
         .shadow(color: Color.black.opacity(0.05), radius: 10)
     }
@@ -1114,7 +1201,7 @@ struct BodyAnalysisView: View {
             }
         }
         .padding()
-        .background(Color.white.opacity(0.2))
+        .background(Color.gymMaxCardBackground)
         .cornerRadius(20)
     }
 }
@@ -1215,4 +1302,212 @@ struct ImagePicker: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+}
+
+struct WorkoutDetailView: View {
+    @Environment(\.presentationMode) var presentationMode
+    let workout: WorkoutDay
+    @State private var selectedExercise: Exercise?
+    @State private var showingExerciseDetail = false
+    @State private var workoutProgress: Double = 0.0
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Workout Header
+                    VStack(spacing: 10) {
+                        Text(workout.name)
+                            .font(.title)
+                            .fontWeight(.bold)
+                            .foregroundColor(.gymMaxText)
+                        
+                        Text(workout.focus)
+                            .font(.headline)
+                            .foregroundColor(.gymMaxSecondary)
+                        
+                        // Progress Circle
+                        ZStack {
+                            Circle()
+                                .stroke(Color.gymMaxCardBackground, lineWidth: 15)
+                                .frame(width: 100, height: 100)
+                            
+                            Circle()
+                                .trim(from: 0, to: workoutProgress)
+                                .stroke(Color.gymMaxAccent, style: StrokeStyle(lineWidth: 15, lineCap: .round))
+                                .frame(width: 100, height: 100)
+                                .rotationEffect(.degrees(-90))
+                                .animation(.easeInOut, value: workoutProgress)
+                            
+                            Text("\(Int(workoutProgress * 100))%")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.gymMaxText)
+                        }
+                        .padding(.top)
+                    }
+                    .padding()
+                    .background(Color.gymMaxCardBackground)
+                    .cornerRadius(20)
+                    .padding(.horizontal)
+                    
+                    // Exercises List
+                    VStack(alignment: .leading, spacing: 15) {
+                        Text("Exercises")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.gymMaxText)
+                            .padding(.horizontal)
+                        
+                        ForEach(workout.exercises) { exercise in
+                            Button(action: {
+                                selectedExercise = exercise
+                                showingExerciseDetail = true
+                            }) {
+                                ExerciseRow(exercise: exercise)
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+                }
+                .padding(.vertical)
+            }
+            .background(Color.gymMaxBackground)
+            .navigationBarItems(
+                leading: Button(action: {
+                    presentationMode.wrappedValue.dismiss()
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gymMaxText)
+                        .font(.title2)
+                }
+            )
+        }
+        .sheet(isPresented: $showingExerciseDetail) {
+            if let exercise = selectedExercise {
+                ExerciseDetailView(exercise: exercise)
+            }
+        }
+        .onAppear {
+            // Simulate progress loading
+            withAnimation(.easeInOut(duration: 1.0)) {
+                workoutProgress = 0.3 // Example progress
+            }
+        }
+    }
+}
+
+struct ExerciseRow: View {
+    let exercise: Exercise
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(exercise.name)
+                    .font(.headline)
+                    .foregroundColor(.gymMaxText)
+                
+                Text("\(exercise.sets) sets • \(exercise.reps)")
+                    .font(.subheadline)
+                    .foregroundColor(.gymMaxSubtext)
+            }
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .foregroundColor(.gymMaxAccent)
+        }
+        .padding()
+        .background(Color.gymMaxCardBackground)
+        .cornerRadius(15)
+    }
+}
+
+struct ExerciseDetailView: View {
+    @Environment(\.presentationMode) var presentationMode
+    let exercise: Exercise
+    @State private var currentSet = 1
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 25) {
+                    // Exercise Header
+                    VStack(spacing: 10) {
+                        Text(exercise.name)
+                            .font(.title)
+                            .fontWeight(.bold)
+                            .foregroundColor(.gymMaxText)
+                        
+                        Text("Set \(currentSet) of \(exercise.sets)")
+                            .font(.title3)
+                            .foregroundColor(.gymMaxSecondary)
+                    }
+                    .padding()
+                    
+                    // Exercise Details
+                    VStack(alignment: .leading, spacing: 20) {
+                        DetailItem(title: "Reps", value: exercise.reps)
+                        DetailItem(title: "Notes", value: exercise.notes)
+                    }
+                    .padding()
+                    .background(Color.gymMaxCardBackground)
+                    .cornerRadius(20)
+                    .padding(.horizontal)
+                    
+                    // Set Controls
+                    HStack(spacing: 30) {
+                        Button(action: {
+                            if currentSet > 1 {
+                                currentSet -= 1
+                            }
+                        }) {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.title)
+                                .foregroundColor(currentSet > 1 ? .gymMaxSecondary : .gray)
+                        }
+                        
+                        Button(action: {
+                            if currentSet < exercise.sets {
+                                currentSet += 1
+                            }
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title)
+                                .foregroundColor(currentSet < exercise.sets ? .gymMaxAccent : .gray)
+                        }
+                    }
+                    .padding()
+                }
+                .padding(.vertical)
+            }
+            .background(Color.gymMaxBackground)
+            .navigationBarItems(
+                leading: Button(action: {
+                    presentationMode.wrappedValue.dismiss()
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gymMaxText)
+                        .font(.title2)
+                }
+            )
+        }
+    }
+}
+
+struct DetailItem: View {
+    let title: String
+    let value: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.gymMaxSubtext)
+            
+            Text(value)
+                .font(.body)
+                .foregroundColor(.gymMaxText)
+        }
+    }
 }
